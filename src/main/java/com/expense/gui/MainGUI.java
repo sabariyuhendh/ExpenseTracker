@@ -76,7 +76,7 @@ public class MainGUI extends JFrame {
         frame.setVisible(true);
     }
     private void setupEventListeners() {
-        category.addActionListener((ActionEvent e) -> {onSelectedExpense();});
-        expense.addActionListener((ActionEvent e) -> {onSelectedCategory();});
+        expense.addActionListener((ActionEvent e) -> {onSelectedExpense();});
+        category.addActionListener((ActionEvent e) -> {onSelectedCategory();});
     }
 }
