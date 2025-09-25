@@ -34,6 +34,7 @@ public class MainGUI extends JFrame {
     private JSpinner dateSpinner;
     private JTable expenseTable;
     private DefaultTableModel expenseTableModel;
+    private JButton addExpense, deleteExpense, updateExpense;
 
     // Constructor
     public MainGUI() {
@@ -449,9 +450,9 @@ public class MainGUI extends JFrame {
         frame.add(tableScroll, gbc);
 
         // Buttons
-        JButton addExpense = new JButton("Add Expense");
-        JButton deleteExpense = new JButton("Delete Expense");
-        JButton updateExpense = new JButton("Update Expense");
+        addExpense = new JButton("Add Expense");
+        deleteExpense = new JButton("Delete Expense");
+        updateExpense = new JButton("Update Expense");
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
         buttonPanel.add(addExpense);
@@ -509,8 +510,23 @@ public class MainGUI extends JFrame {
         
         try {
             Category selectedCategory = (Category) categoryCombo.getSelectedItem();
+            if (selectedCategory == null) {
+                JOptionPane.showMessageDialog(this, "Please select a category");
+                return;
+            }
+            
             PaymentMethod paymentMethod = (PaymentMethod) paymentCombo.getSelectedItem();
+            if (paymentMethod == null) {
+                JOptionPane.showMessageDialog(this, "Please select a payment method");
+                return;
+            }
+            
             int amount = Integer.parseInt(amountText);
+            if (amount <= 0) {
+                JOptionPane.showMessageDialog(this, "Amount must be greater than 0");
+                return;
+            }
+            
             Date selectedDate = (Date) dateSpinner.getValue();
             LocalDateTime expenseDate = selectedDate.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
             
@@ -527,6 +543,8 @@ public class MainGUI extends JFrame {
             } else {
                 JOptionPane.showMessageDialog(this, "Failed to add expense");
             }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Please enter a valid amount (numbers only)");
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Error adding expense: " + e.getMessage());
         }
@@ -587,8 +605,23 @@ public class MainGUI extends JFrame {
         
         try {
             Category selectedCategory = (Category) categoryCombo.getSelectedItem();
+            if (selectedCategory == null) {
+                JOptionPane.showMessageDialog(this, "Please select a category");
+                return;
+            }
+            
             PaymentMethod paymentMethod = (PaymentMethod) paymentCombo.getSelectedItem();
+            if (paymentMethod == null) {
+                JOptionPane.showMessageDialog(this, "Please select a payment method");
+                return;
+            }
+            
             int amount = Integer.parseInt(amountText);
+            if (amount <= 0) {
+                JOptionPane.showMessageDialog(this, "Amount must be greater than 0");
+                return;
+            }
+            
             Date selectedDate = (Date) dateSpinner.getValue();
             LocalDateTime expenseDate = selectedDate.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
             
@@ -604,6 +637,8 @@ public class MainGUI extends JFrame {
             } else {
                 JOptionPane.showMessageDialog(this, "Failed to update expense");
             }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Please enter a valid amount (numbers only)");
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Update failed: " + e.getMessage());
         }
@@ -633,13 +668,19 @@ public class MainGUI extends JFrame {
             expenseTableModel.setRowCount(0); // Clear existing rows
             
             expenses.forEach(expense -> {
+                // Handle null values gracefully
+                String paymentMethod = expense.getPaymentMethod() != null ? 
+                    expense.getPaymentMethod().toString() : "UNKNOWN";
+                String expenseDate = expense.getExpense_date() != null ? 
+                    expense.getExpense_date().toString().substring(0, 16) : "N/A";
+                
                 Object[] row = {
                     expense.getExpense_id(),
                     getCategoryName(expense.getCategory_id()),
-                    expense.getPaymentMethod().toString(),
+                    paymentMethod,
                     expense.getAmount(),
                     expense.getDescription(),
-                    expense.getExpense_date().toString().substring(0, 16)
+                    expenseDate
                 };
                 expenseTableModel.addRow(row);
             });
@@ -655,38 +696,53 @@ public class MainGUI extends JFrame {
     private void loadSelectedExpense() {
         int row = expenseTable.getSelectedRow();
         if (row != -1) {
-            // Set category
-            String categoryName = (String) expenseTable.getValueAt(row, 1);
-            for (int i = 0; i < categoryCombo.getItemCount(); i++) {
-                if (categoryCombo.getItemAt(i).getCategoryname().equals(categoryName)) {
-                    categoryCombo.setSelectedIndex(i);
-                    break;
+            try {
+                // Set category
+                String categoryName = (String) expenseTable.getValueAt(row, 1);
+                for (int i = 0; i < categoryCombo.getItemCount(); i++) {
+                    if (categoryCombo.getItemAt(i).getCategoryname().equals(categoryName)) {
+                        categoryCombo.setSelectedIndex(i);
+                        break;
+                    }
                 }
-            }
 
-            // Set payment method
-            String paymentMethod = (String) expenseTable.getValueAt(row, 2);
-            if (!"UNKNOWN".equals(paymentMethod)) {
-                paymentCombo.setSelectedItem(PaymentMethod.valueOf(paymentMethod));
-            }
-
-            // Set amount
-            amountField.setText(expenseTable.getValueAt(row, 3).toString());
-
-            // Set description
-            expenseDescriptionArea.setText((String) expenseTable.getValueAt(row, 4));
-
-            // Set date - parse the date string and set it in the spinner
-            String dateString = (String) expenseTable.getValueAt(row, 5);
-            if (!"N/A".equals(dateString)) {
-                try {
-                    LocalDateTime dateTime = LocalDateTime.parse(dateString + ":00");
-                    Date date = Date.from(dateTime.atZone(java.time.ZoneId.systemDefault()).toInstant());
-                    dateSpinner.setValue(date);
-                } catch (Exception e) {
-                    // If parsing fails, keep current date
-                    System.err.println("Failed to parse date: " + dateString);
+                // Set payment method
+                String paymentMethod = (String) expenseTable.getValueAt(row, 2);
+                if (!"UNKNOWN".equals(paymentMethod)) {
+                    try {
+                        paymentCombo.setSelectedItem(PaymentMethod.valueOf(paymentMethod));
+                    } catch (IllegalArgumentException e) {
+                        paymentCombo.setSelectedIndex(0); // Default to first option
+                    }
                 }
+
+                // Set amount
+                Object amountValue = expenseTable.getValueAt(row, 3);
+                if (amountValue != null) {
+                    amountField.setText(amountValue.toString());
+                }
+
+                // Set description
+                Object descValue = expenseTable.getValueAt(row, 4);
+                if (descValue != null) {
+                    expenseDescriptionArea.setText(descValue.toString());
+                }
+
+                // Set date - parse the date string and set it in the spinner
+                String dateString = (String) expenseTable.getValueAt(row, 5);
+                if (!"N/A".equals(dateString) && dateString != null) {
+                    try {
+                        LocalDateTime dateTime = LocalDateTime.parse(dateString + ":00");
+                        Date date = Date.from(dateTime.atZone(java.time.ZoneId.systemDefault()).toInstant());
+                        dateSpinner.setValue(date);
+                    } catch (Exception e) {
+                        // If parsing fails, keep current date
+                        System.err.println("Failed to parse date: " + dateString);
+                        dateSpinner.setValue(new Date());
+                    }
+                }
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this, "Error loading selected expense: " + e.getMessage());
             }
         }
     }
